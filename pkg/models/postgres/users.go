@@ -21,7 +21,7 @@ func (c *UsersController) Get(id int) (models.User, error) {
 	err := result.Scan(&user.Id, &user.Name, &user.Role, &user.Password)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return models.User{}, models.ErroNoRows
+		return user, models.ErroNoRows
 	}
 
 	return user, nil
@@ -65,7 +65,7 @@ func (c *UsersController) Create(user models.NewUser) error {
 	if err != nil {
 		// Is name already taken?
 		if getPgxErroCode(err) == pgerrcode.UniqueViolation {
-			return models.ErrorUserNameTaken
+			return models.ErrUserNameTaken
 		}
 
 		return serverError(err)
@@ -85,7 +85,7 @@ func (c *UsersController) Edit(id int, user models.UpdateUser) error {
 	if err != nil {
 		// Is name already taken?
 		if getPgxErroCode(err) == pgerrcode.UniqueViolation {
-			return models.ErrorUserNameTaken
+			return models.ErrUserNameTaken
 		}
 
 		return serverError(err)

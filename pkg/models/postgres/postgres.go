@@ -31,9 +31,14 @@ func New(dsn string) (models.Models, error) {
 		conn,
 	}
 
+	rooms := &RoomsController{
+		conn,
+	}
+
 	return models.Models{
 		Auth:   auth,
 		Movies: movies,
 		Users:  users,
+		Rooms:  rooms,
 	}, nil
 }

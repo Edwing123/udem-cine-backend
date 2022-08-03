@@ -55,10 +55,10 @@ type Room struct {
 
 type NewRoom Room
 
-type Update Room
+type UpdateRoom Room
 
 type Seat struct {
-	RoomId int
+	Room   int
 	Number int
 }
 

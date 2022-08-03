@@ -6,5 +6,7 @@ var (
 	ErrAuth            = errors.New("authentication failed")
 	ErroNoRows         = errors.New("no rows found")
 	ErrServer          = errors.New("server error")
-	ErrorUserNameTaken = errors.New("username already taken")
+	ErrUserNameTaken   = errors.New("username already taken")
+	ErrMovieTitleTaken = errors.New("movie title already taken")
+	ErrRoomTaken       = errors.New("room number already taken")
 )
