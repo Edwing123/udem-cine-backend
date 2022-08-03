@@ -6,12 +6,14 @@ import (
 
 	"github.com/Edwing123/udem-cine/pkg/models"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/session"
 )
 
 type Api struct {
 	Models      models.Models
 	InfoLogger  *log.Logger
 	ErrorLogger *log.Logger
+	Store       *session.Store
 }
 
 func (api *Api) NewApp() *fiber.App {
@@ -39,13 +41,27 @@ func (api *Api) NewApp() *fiber.App {
 
 // Command line arguments.
 type Args struct {
-	Dsn     string
-	Address string
+	Dsn           string
+	Address       string
+	StoreUserName string
+	StorePassword string
+	StoreDatabase string
 }
 
 func GetArgs() Args {
 	dsn := flag.String("dsn", "", "Database connection string")
+
 	address := flag.String("address", "", "The server address to listen on")
+
+	storeUserName := flag.String(
+		"storeUserName",
+		"",
+		"Username for the PostgreSQL sessions store",
+	)
+
+	storePassword := flag.String("storePassword", "", "Password for storeUserName")
+
+	storeDatabase := flag.String("storeDatabase", "", "Name of the database for the sessions store")
 
 	flag.Parse()
 
@@ -57,8 +73,23 @@ func GetArgs() Args {
 		log.Fatalln("address flag is required")
 	}
 
+	if *storeUserName == "" {
+		log.Fatalln("storeUserName flag is required")
+	}
+
+	if *storePassword == "" {
+		log.Fatalln("storePassword flag is required")
+	}
+
+	if *storeDatabase == "" {
+		log.Fatalln("storeDatabase flag is required")
+	}
+
 	return Args{
-		Dsn:     *dsn,
-		Address: *address,
+		Dsn:           *dsn,
+		Address:       *address,
+		StoreUserName: *storeUserName,
+		StorePassword: *storePassword,
+		StoreDatabase: *storeDatabase,
 	}
 }
