@@ -7,8 +7,6 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-type Config struct{}
-
 func New(dsn string) (models.Models, error) {
 	ctx := context.Background()
 

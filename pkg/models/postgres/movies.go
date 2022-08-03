@@ -9,6 +9,10 @@ type MoviesController struct {
 	conn *pgxpool.Pool
 }
 
+func (mc *MoviesController) Get(id int) models.Movie {
+	return models.Movie{}
+}
+
 func (mc *MoviesController) List() []models.Movie {
 	return []models.Movie{}
 }
@@ -17,7 +21,7 @@ func (mc *MoviesController) Create(movie models.NewMovie) error {
 	return nil
 }
 
-func (mc *MoviesController) Edit(models.Movie) error {
+func (mc *MoviesController) Edit(id int, updateMovie models.UpdateMovie) error {
 	return nil
 }
 

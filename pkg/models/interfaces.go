@@ -1,21 +1,21 @@
 package models
 
 type Auth interface {
-	Login(Credentials) error
+	Authenticate(Credentials) (int, error)
 }
 
 type Movies interface {
 	List() []Movie
 	Create(movie NewMovie) error
-	Edit(Movie) error
+	Edit(id int, updateMovie UpdateMovie) error
 	Delete(id int) error
 }
 
 type Users interface {
-	Details(id int) (User, error)
-	List() []User
+	Get(id int) (User, error)
+	List() ([]User, error)
 	Create(user NewUser) error
-	Edit(user User) error
+	Edit(id int, user UpdateUser) error
 	Delete(id int) error
 }
 
