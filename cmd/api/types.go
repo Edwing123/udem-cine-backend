@@ -6,7 +6,16 @@ import (
 
 	"github.com/Edwing123/udem-cine/pkg/models"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/session"
+)
+
+var (
+	SessionKey    = "session"
+	UserIdKey     = "userId"
+	isLoggedInKey = "isLoggedIn"
 )
 
 type Api struct {
@@ -22,9 +31,25 @@ func (api *Api) NewApp() *fiber.App {
 		AppName:      "UdeMCine API",
 	})
 
-	// Define routes.
+	// Define global middlewares.
+	app.Use(
+		api.SetSessionToContext,
+		recover.New(),
+		logger.New(),
+	)
+
+	app.Use(cors.New(cors.Config{
+		AllowCredentials: true,
+		AllowOrigins:     "127.0.0.1:5173, 127.0.0.1:4173",
+	}))
+
+	// No protected routes.
 	app.Post("/auth/login", api.AuthLogin)
+
+	// Protected routes.
+	app.Use(api.AuthenticateRequest)
 	app.Get("/user", api.UserDetaills)
+	app.Get("/auth/logout", api.AuthLogout)
 
 	users := app.Group("/users")
 	users.Get("/list", api.UsersList)
