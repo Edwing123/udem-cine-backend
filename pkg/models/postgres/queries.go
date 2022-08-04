@@ -134,4 +134,35 @@ const (
 	DELETE FROM "schedule"
 	WHERE id = $1;
 	`
+
+	// Function queries.
+	selectFunction = `
+	SELECT id, price, created_at, movie_id, room, schedule_id
+	FROM "function"
+	WHERE id = $1; 
+	`
+
+	selectAllFunctions = `
+	SELECT id, price, created_at, movie_id, room, schedule_id
+	FROM "function";
+	`
+
+	insertFunction = `
+	INSERT INTO "function" (price, movie_id, room, schedule_id)
+	VALUES($1 , $2, $3, $4);
+	`
+
+	updateFunction = `
+	UPDATE "function"
+	SET price = $2,
+		movie_id = $3,
+		room = $4,
+		schedule_id = $5
+	WHERE id = $1;
+	`
+
+	deleteFunction = `
+	DELETE FROM "function"
+	WHERE id = $1;
+	`
 )

@@ -31,3 +31,13 @@ CREATE TABLE IF NOT EXISTS "schedule" (
     name TEXT NOT NULL,
     time TIME NOT NULL UNIQUE
 );
+
+CREATE TABLE IF NOT EXISTS "function" (
+    id SERIAL PRIMARY KEY,
+    price MONEY NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    movie_id INT NOT NULL REFERENCES "movie"(id),
+    room SMALLINT NULL REFERENCES "room"(number),
+    schedule_id INT NOT NULL REFERENCES "schedule"(id),
+    CONSTRAINT function_room_schedule_unique UNIQUE (room, schedule_id)
+);
