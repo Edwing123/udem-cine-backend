@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/Edwing123/udem-cine/pkg/models"
 	"github.com/jackc/pgerrcode"
@@ -31,7 +30,7 @@ func (c *RoomsController) Get(id int) (models.Room, error) {
 }
 
 func (c *RoomsController) List() ([]models.Room, error) {
-	var rooms []models.Room
+	rooms := make([]models.Room, 0)
 
 	result, err := c.conn.Query(globalCtx, selectAllRooms)
 	if err != nil {
@@ -61,7 +60,7 @@ func (c *RoomsController) List() ([]models.Room, error) {
 }
 
 func (c *RoomsController) ListSeats(id int) ([]models.Seat, error) {
-	var seats []models.Seat
+	seats := make([]models.Seat, 0)
 
 	result, err := c.conn.Query(globalCtx, selectAllSeats, id)
 	if err != nil {
@@ -170,8 +169,6 @@ func (c *RoomsController) Delete(id int) error {
 		deleteRoom,
 		id,
 	)
-
-	fmt.Println(err)
 
 	if err != nil {
 		return serverError(err)

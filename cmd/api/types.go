@@ -49,21 +49,35 @@ func (api *Api) NewApp() *fiber.App {
 
 	// Protected routes.
 	app.Use(api.AuthenticateRequest)
-	app.Get("/user/:id", api.UserGet)
 	app.Post("/auth/logout", api.AuthLogout)
 
 	users := app.Group("/users")
+	users.Get("/get/:id", api.UsersGet)
 	users.Get("/list", api.UsersList)
 	users.Post("/create", api.UsersCreate)
 	users.Patch("/edit", api.UsersEdit)
 	users.Delete("/delete", api.UsersDelete)
 
 	movies := app.Group("/movies")
-	movies.Get("/get", api.MoviesGet)
+	movies.Get("/get/:id", api.MoviesGet)
 	movies.Get("/list", api.MoviesList)
 	movies.Post("/create", api.MoviesCreate)
 	movies.Patch("/edit", api.MoviesEdit)
 	movies.Delete("/delete", api.MoviesDelete)
+
+	rooms := app.Group("/rooms")
+	rooms.Get("/get/:number", api.RoomsGet)
+	rooms.Get("/list", api.RoomsList)
+	rooms.Post("/create", api.RoomsCreate)
+	rooms.Patch("/edit", api.RoomsEdit)
+	rooms.Delete("/delete", api.RoomsDelete)
+
+	schedules := app.Group("/schedules")
+	schedules.Get("/get/:id", api.SchedulesGet)
+	schedules.Get("/list", api.SchedulesList)
+	schedules.Post("/create", api.SchedulesCreate)
+	schedules.Patch("/edit", api.SchedulesEdit)
+	schedules.Delete("/delete", api.SchedulesDelete)
 
 	return app
 }

@@ -4,20 +4,20 @@ import "time"
 
 // Movie related structs.
 type Movie struct {
-	Id             int           `json:"id"`
-	Title          string        `json:"title"`
-	Classification string        `json:"classification"`
-	Genre          string        `json:"genre"`
-	Duration       time.Duration `json:"duration"`
-	ReleaseDate    time.Time     `json:"releaseDate"`
+	Id             int    `json:"id"`
+	Title          string `json:"title"`
+	Classification string `json:"classification"`
+	Genre          string `json:"genre"`
+	Duration       int    `json:"duration"`
+	ReleaseDate    string `json:"releaseDate"`
 }
 
 type NewMovie struct {
-	Title          string        `json:"title"`
-	Classification string        `json:"classification"`
-	Genre          string        `json:"genre"`
-	Duration       time.Duration `json:"duration"`
-	ReleaseDate    time.Time     `json:"releaseDate"`
+	Title          string `json:"title"`
+	Classification string `json:"classification"`
+	Genre          string `json:"genre"`
+	Duration       int    `json:"duration"`
+	ReleaseDate    string `json:"releaseDate"`
 }
 
 type UpdateMovie NewMovie
@@ -58,20 +58,20 @@ type NewRoom Room
 type UpdateRoom Room
 
 type Seat struct {
-	Room   int
-	Number int
+	Room   int `json:"room"`
+	Number int `json:"number"`
 }
 
 // Schedule related structs.
 type Schedule struct {
-	Id   int       `json:"id"`
-	Name string    `json:"name"`
-	Time time.Time `json:"time"`
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+	Time string `json:"time"`
 }
 
 type NewSchedule struct {
-	Name string    `json:"name"`
-	Time time.Time `json:"time"`
+	Name string `json:"name"`
+	Time string `json:"time"`
 }
 
 type UpdateSchedule NewSchedule

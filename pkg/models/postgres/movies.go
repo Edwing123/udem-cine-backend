@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"errors"
+	"time"
 
 	"github.com/Edwing123/udem-cine/pkg/models"
 	"github.com/jackc/pgerrcode"
@@ -16,6 +17,8 @@ type MoviesController struct {
 func (c *MoviesController) Get(id int) (models.Movie, error) {
 	var movie models.Movie
 
+	var releaseDate time.Time
+
 	result := c.conn.QueryRow(globalCtx, selectMovie, id)
 	err := result.Scan(
 		&movie.Id,
@@ -23,8 +26,10 @@ func (c *MoviesController) Get(id int) (models.Movie, error) {
 		&movie.Classification,
 		&movie.Genre,
 		&movie.Duration,
-		&movie.ReleaseDate,
+		&releaseDate,
 	)
+
+	movie.ReleaseDate = releaseDate.Format("2006-01-02")
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return movie, models.ErroNoRows
@@ -34,12 +39,14 @@ func (c *MoviesController) Get(id int) (models.Movie, error) {
 }
 
 func (c *MoviesController) List() ([]models.Movie, error) {
-	var movies []models.Movie
+	movies := make([]models.Movie, 0)
 
 	result, err := c.conn.Query(globalCtx, selectAllMovies)
 	if err != nil {
 		return nil, serverError(err)
 	}
+
+	var releaseDate time.Time
 
 	for result.Next() {
 		var movie models.Movie
@@ -50,8 +57,10 @@ func (c *MoviesController) List() ([]models.Movie, error) {
 			&movie.Classification,
 			&movie.Genre,
 			&movie.Duration,
-			&movie.ReleaseDate,
+			&releaseDate,
 		)
+
+		movie.ReleaseDate = releaseDate.Format("02 de January del 2006")
 
 		if err != nil {
 			return nil, serverError(err)
@@ -117,7 +126,7 @@ func (c *MoviesController) Edit(id int, movie models.UpdateMovie) error {
 func (c *MoviesController) Delete(id int) error {
 	_, err := c.conn.Exec(
 		globalCtx,
-		deleteUser,
+		deleteMovie,
 		id,
 	)
 

@@ -28,7 +28,7 @@ func (c *UsersController) Get(id int) (models.User, error) {
 }
 
 func (c *UsersController) List() ([]models.User, error) {
-	var users []models.User
+	users := make([]models.User, 0)
 
 	result, err := c.conn.Query(globalCtx, selectAllUsers)
 	if err != nil {

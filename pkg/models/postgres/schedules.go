@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"errors"
+	"time"
 
 	"github.com/Edwing123/udem-cine/pkg/models"
 	"github.com/jackc/pgerrcode"
@@ -16,12 +17,16 @@ type SchedulesController struct {
 func (c *SchedulesController) Get(id int) (models.Schedule, error) {
 	var schedule models.Schedule
 
+	var parsedTime time.Time
+
 	result := c.conn.QueryRow(globalCtx, selectSchedule, id)
 	err := result.Scan(
 		&schedule.Id,
 		&schedule.Name,
-		&schedule.Time,
+		&parsedTime,
 	)
+
+	schedule.Time = parsedTime.Format("15:04")
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return schedule, models.ErroNoRows
@@ -31,12 +36,14 @@ func (c *SchedulesController) Get(id int) (models.Schedule, error) {
 }
 
 func (c *SchedulesController) List() ([]models.Schedule, error) {
-	var schedules []models.Schedule
+	schedules := make([]models.Schedule, 0)
 
 	result, err := c.conn.Query(globalCtx, selectAllSchedules)
 	if err != nil {
 		return nil, serverError(err)
 	}
+
+	var parsedTime time.Time
 
 	for result.Next() {
 		var schedule models.Schedule
@@ -44,8 +51,10 @@ func (c *SchedulesController) List() ([]models.Schedule, error) {
 		err := result.Scan(
 			&schedule.Id,
 			&schedule.Name,
-			&schedule.Time,
+			&parsedTime,
 		)
+
+		schedule.Time = parsedTime.Format("15:04")
 
 		if err != nil {
 			return nil, serverError(err)

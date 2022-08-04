@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS "movie" (
     title TEXT UNIQUE NOT NULL,
     classification TEXT NOT NULL,
     genre TEXT NOT NULL,
-    duration INTERVAL HOUR TO MINUTE NOT NULL,
+    duration SMALLINT,
     release_date DATE NOT NULL
 );
 
