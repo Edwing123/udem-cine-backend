@@ -29,9 +29,18 @@ type Rooms interface {
 	Delete(id int) error
 }
 
+type Schedules interface {
+	Get(id int) (Schedule, error)
+	List() ([]Schedule, error)
+	Create(schedule NewSchedule) error
+	Edit(id int, schedule UpdateSchedule) error
+	Delete(id int) error
+}
+
 type Models struct {
 	Auth
 	Movies
 	Users
 	Rooms
+	Schedules
 }

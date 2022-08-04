@@ -7,4 +7,8 @@ drop sequence if exists movie_id_seq;
 drop table if exists "seat";
 drop table if exists "room";
 
+drop table if exists "schedule";
+drop sequence if exists schedule_id_seq;
+
+
 drop type if exists "user_role";

@@ -90,15 +90,16 @@ func (c *MoviesController) Create(movie models.NewMovie) error {
 	return nil
 }
 
-func (c *MoviesController) Edit(id int, updateMovie models.UpdateMovie) error {
+func (c *MoviesController) Edit(id int, movie models.UpdateMovie) error {
 	_, err := c.conn.Exec(
 		globalCtx,
-		insertMovie,
-		updateMovie.Title,
-		updateMovie.Classification,
-		updateMovie.Genre,
-		updateMovie.Duration,
-		updateMovie.ReleaseDate,
+		updateMovie,
+		id,
+		movie.Title,
+		movie.Classification,
+		movie.Genre,
+		movie.Duration,
+		movie.ReleaseDate,
 	)
 
 	if err != nil {

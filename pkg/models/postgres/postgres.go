@@ -35,10 +35,15 @@ func New(dsn string) (models.Models, error) {
 		conn,
 	}
 
+	schedules := &SchedulesController{
+		conn,
+	}
+
 	return models.Models{
-		Auth:   auth,
-		Movies: movies,
-		Users:  users,
-		Rooms:  rooms,
+		Auth:      auth,
+		Movies:    movies,
+		Users:     users,
+		Rooms:     rooms,
+		Schedules: schedules,
 	}, nil
 }

@@ -25,3 +25,9 @@ CREATE TABLE IF NOT EXISTS "seat" (
     room SMALLINT NOT NULL REFERENCES "room"(number) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT seat_primary_key PRIMARY KEY (number, room)
 );
+
+CREATE TABLE IF NOT EXISTS "schedule" (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    time TIME NOT NULL UNIQUE
+);

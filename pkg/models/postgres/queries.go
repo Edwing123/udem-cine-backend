@@ -52,6 +52,12 @@ const (
 	VALUES($1, $2, $3, $4, $5);
 	`
 
+	updateMovie = `
+	UPDATE "movie"
+	SET title = $2, classification = $3, genre = $4, duration = $5, release_date = $6
+	WHERE id = $1;
+	`
+
 	deleteMovie = `
 	DELETE FROM "movie"
 	WHERE id = $1;
@@ -99,5 +105,33 @@ const (
 	deleteRoom = `
 	DELETE FROM "room"
 	WHERE number = $1;
+	`
+
+	// Schedule queries.
+	selectSchedule = `
+	SELECT id, name, time
+	FROM "schedule"
+	WHERE id = $1;
+	`
+
+	selectAllSchedules = `
+	SELECT id, name, time
+	FROM "schedule";
+	`
+
+	insertSchedule = `
+	INSERT INTO "schedule" (name, time)
+	VALUES ($1, $2);
+	`
+
+	updateSchedule = `
+	UPDATE "schedule"
+	SET name = $2, time = $3
+	WHERE id = $1;
+	`
+
+	deleteSchedule = `
+	DELETE FROM "schedule"
+	WHERE id = $1;
 	`
 )

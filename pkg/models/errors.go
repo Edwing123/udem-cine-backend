@@ -9,4 +9,5 @@ var (
 	ErrUserNameTaken   = errors.New("username already taken")
 	ErrMovieTitleTaken = errors.New("movie title already taken")
 	ErrRoomTaken       = errors.New("room number already taken")
+	ErrScheduleTaken   = errors.New("schedule time already taken")
 )
