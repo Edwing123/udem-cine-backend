@@ -43,7 +43,7 @@ type UpdateUser struct {
 
 // Credentials struct.
 type Credentials struct {
-	UserName string `json:"username"`
+	UserName string `json:"userName"`
 	Password string `json:"password"`
 }
 

@@ -29,7 +29,7 @@ func (api *Api) SetSessionToContext(c *fiber.Ctx) error {
 // Calls the next handler only if the user is logged in.
 func (api *Api) AuthenticateRequest(c *fiber.Ctx) error {
 	sess := api.GetSession(c)
-	isLoggedIn, ok := sess.Get(isLoggedInKey).(bool)
+	isLoggedIn, ok := sess.Get(IsLoggedInKey).(bool)
 
 	if !isLoggedIn || !ok {
 		return c.SendStatus(fiber.StatusUnauthorized)

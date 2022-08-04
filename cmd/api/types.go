@@ -15,7 +15,7 @@ import (
 var (
 	SessionKey    = "session"
 	UserIdKey     = "userId"
-	isLoggedInKey = "isLoggedIn"
+	IsLoggedInKey = "isLoggedIn"
 )
 
 type Api struct {
@@ -40,28 +40,53 @@ func (api *Api) NewApp() *fiber.App {
 
 	app.Use(cors.New(cors.Config{
 		AllowCredentials: true,
-		AllowOrigins:     "127.0.0.1:5173, 127.0.0.1:4173",
+		AllowOrigins:     "http://localhost:4173, http://localhost:5173",
 	}))
 
 	// No protected routes.
 	app.Post("/auth/login", api.AuthLogin)
+	app.Get("/is-logged-in", api.IsLoggedIn)
 
 	// Protected routes.
 	app.Use(api.AuthenticateRequest)
-	app.Get("/user", api.UserDetaills)
-	app.Get("/auth/logout", api.AuthLogout)
+	app.Get("/user/:id", api.UserGet)
+	app.Post("/auth/logout", api.AuthLogout)
 
 	users := app.Group("/users")
 	users.Get("/list", api.UsersList)
+	users.Post("/create", api.UsersCreate)
 	users.Patch("/edit", api.UsersEdit)
 	users.Delete("/delete", api.UsersDelete)
 
 	movies := app.Group("/movies")
+	movies.Get("/get", api.MoviesGet)
 	movies.Get("/list", api.MoviesList)
+	movies.Post("/create", api.MoviesCreate)
 	movies.Patch("/edit", api.MoviesEdit)
 	movies.Delete("/delete", api.MoviesDelete)
 
 	return app
+}
+
+// Response structs.
+type ErrorMessage[T any] struct {
+	Ok     bool `json:"ok"`
+	Reason T    `json:"reason"`
+}
+
+type SuccessMessage[T any] struct {
+	Ok   bool `json:"ok"`
+	Data T    `json:"data"`
+}
+
+// Request bodies.
+type ModelWithId[T any] struct {
+	Id   int `json:"id"`
+	Data T   `json:"data"`
+}
+
+type BodyWithId struct {
+	Id int `json:"id"`
 }
 
 // Command line arguments.

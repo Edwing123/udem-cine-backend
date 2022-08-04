@@ -29,7 +29,7 @@ const (
 	WHERE id = $1;
 	`
 
-	selectIdPassword = `
+	selectUserIdPassword = `
 	SELECT id, password
 	FROM "user"
 	WHERE name = $1;
