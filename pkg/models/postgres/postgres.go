@@ -39,11 +39,16 @@ func New(dsn string) (models.Models, error) {
 		conn,
 	}
 
+	functions := &FunctionsController{
+		conn,
+	}
+
 	return models.Models{
 		Auth:      auth,
 		Movies:    movies,
 		Users:     users,
 		Rooms:     rooms,
 		Schedules: schedules,
+		Functions: functions,
 	}, nil
 }

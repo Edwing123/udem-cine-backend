@@ -20,6 +20,7 @@ func (c *AuthController) Authenticate(credentials models.Credentials) (int, erro
 	row := c.conn.QueryRow(globalCtx, selectUserIdPassword, credentials.UserName)
 
 	err := row.Scan(&id, &hashedPassword)
+
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, models.ErrAuth
 	}

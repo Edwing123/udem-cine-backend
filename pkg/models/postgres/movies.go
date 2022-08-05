@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Edwing123/udem-cine/pkg/models"
@@ -42,6 +43,7 @@ func (c *MoviesController) List() ([]models.Movie, error) {
 	movies := make([]models.Movie, 0)
 
 	result, err := c.conn.Query(globalCtx, selectAllMovies)
+
 	if err != nil {
 		return nil, serverError(err)
 	}
@@ -129,6 +131,8 @@ func (c *MoviesController) Delete(id int) error {
 		deleteMovie,
 		id,
 	)
+
+	fmt.Println(err)
 
 	if err != nil {
 		return serverError(err)

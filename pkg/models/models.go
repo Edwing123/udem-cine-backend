@@ -79,7 +79,7 @@ type UpdateSchedule NewSchedule
 // Functions related structs.
 type Function struct {
 	Id         int       `json:"id"`
-	Price      float64   `json:"price"`
+	Price      int       `json:"price"`
 	CreatedAt  time.Time `json:"createdAt"`
 	MovieId    int       `json:"movieId"`
 	Room       int       `json:"room"`
@@ -87,24 +87,24 @@ type Function struct {
 }
 
 type FunctionDetails struct {
-	Id        int
-	Movie     string
-	Schedule  string
-	Room      int
-	Price     float64
-	CreatedAt string
+	Id        int       `json:"id"`
+	Movie     string    `json:"movie"`
+	Schedule  string    `json:"schedule"`
+	Room      int       `json:"room"`
+	Price     int       `json:"price"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type NewFunction struct {
-	movieId    int
+	MovieId    int
 	ScheduleId int
 	Room       int
-	Price      float64
+	Price      int
 }
 
 type UpdateFunction struct {
-	movieId    int
+	MovieId    int
 	ScheduleId int
 	Room       int
-	Price      float64
+	Price      int
 }

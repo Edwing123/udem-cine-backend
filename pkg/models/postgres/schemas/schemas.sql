@@ -1,4 +1,5 @@
 CREATE TYPE "user_role" AS ENUM('admin', 'taquillero');
+CREATE TYPE "movie_classification" AS ENUM('G', 'PG', 'PG-13', 'R', 'NC-17');
 
 CREATE TABLE IF NOT EXISTS "user" (
     id SERIAL PRIMARY KEY,
@@ -34,7 +35,7 @@ CREATE TABLE IF NOT EXISTS "schedule" (
 
 CREATE TABLE IF NOT EXISTS "function" (
     id SERIAL PRIMARY KEY,
-    price MONEY NOT NULL,
+    price INT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     movie_id INT NOT NULL REFERENCES "movie"(id),
     room SMALLINT NULL REFERENCES "room"(number),

@@ -53,31 +53,41 @@ func (api *Api) NewApp() *fiber.App {
 
 	users := app.Group("/users")
 	users.Get("/get/:id", api.UsersGet)
+	users.Use(api.OnlyAdmin)
 	users.Get("/list", api.UsersList)
 	users.Post("/create", api.UsersCreate)
 	users.Patch("/edit", api.UsersEdit)
 	users.Delete("/delete", api.UsersDelete)
 
-	movies := app.Group("/movies")
+	movies := app.Group("/movies", api.OnlyAdmin)
 	movies.Get("/get/:id", api.MoviesGet)
 	movies.Get("/list", api.MoviesList)
 	movies.Post("/create", api.MoviesCreate)
 	movies.Patch("/edit", api.MoviesEdit)
 	movies.Delete("/delete", api.MoviesDelete)
 
-	rooms := app.Group("/rooms")
+	rooms := app.Group("/rooms", api.OnlyAdmin)
 	rooms.Get("/get/:number", api.RoomsGet)
 	rooms.Get("/list", api.RoomsList)
 	rooms.Post("/create", api.RoomsCreate)
 	rooms.Patch("/edit", api.RoomsEdit)
 	rooms.Delete("/delete", api.RoomsDelete)
 
-	schedules := app.Group("/schedules")
+	schedules := app.Group("/schedules", api.OnlyAdmin)
 	schedules.Get("/get/:id", api.SchedulesGet)
 	schedules.Get("/list", api.SchedulesList)
 	schedules.Post("/create", api.SchedulesCreate)
 	schedules.Patch("/edit", api.SchedulesEdit)
 	schedules.Delete("/delete", api.SchedulesDelete)
+
+	functions := app.Group("/functions")
+
+	functions.Get("/list", api.FunctionsList)
+	functions.Use(api.OnlyAdmin)
+	functions.Get("/get/:id", api.FunctionsGet)
+	functions.Post("/create", api.FunctionsCreate)
+	functions.Patch("/edit", api.FunctionsEdit)
+	functions.Delete("/delete", api.FunctionsDelete)
 
 	return app
 }

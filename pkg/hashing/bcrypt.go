@@ -23,8 +23,8 @@ func HashPassword(password string) string {
 // Verifies if clearText and password match.
 func VerifyPassword(clearTextPassword, hashedPassword string) bool {
 	err := bcrypt.CompareHashAndPassword(
-		[]byte(clearTextPassword),
 		[]byte(hashedPassword),
+		[]byte(clearTextPassword),
 	)
 
 	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {

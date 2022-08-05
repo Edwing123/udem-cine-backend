@@ -37,10 +37,19 @@ type Schedules interface {
 	Delete(id int) error
 }
 
+type Functions interface {
+	Get(id int) (Function, error)
+	List() ([]FunctionDetails, error)
+	Create(function NewFunction) error
+	Edit(id int, function UpdateFunction) error
+	Archive(id int) error
+}
+
 type Models struct {
 	Auth
 	Movies
 	Users
 	Rooms
 	Schedules
+	Functions
 }

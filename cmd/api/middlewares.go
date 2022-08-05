@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/utils"
 )
 
 // Sets store to Fiber context locals.
@@ -36,4 +37,25 @@ func (api *Api) AuthenticateRequest(c *fiber.Ctx) error {
 	}
 
 	return c.Next()
+}
+
+func (api *Api) OnlyAdmin(c *fiber.Ctx) error {
+	sess := api.GetSession(c)
+	id := sess.Get(UserIdKey).(int)
+
+	user, err := api.Models.Users.Get(id)
+	if err != nil {
+		return api.ServerError(c, err)
+	}
+
+	isAdmin := user.Role == "admin"
+	if isAdmin {
+		return c.Next()
+	}
+
+	return SendError(
+		c,
+		fiber.StatusUnauthorized,
+		utils.StatusMessage(fiber.StatusUnauthorized),
+	)
 }

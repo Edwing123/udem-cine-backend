@@ -142,6 +142,17 @@ const (
 	WHERE id = $1; 
 	`
 
+	selectFunctionDetails = `
+	SELECT f.id, f.price, f.created_at, m.title, room, s.name
+
+	FROM "function" AS f
+	INNER JOIN "movie" AS m
+	ON f.movie_id = m.id
+
+	INNER JOIN "schedule" as s
+	ON f.schedule_id = s.id
+	`
+
 	selectAllFunctions = `
 	SELECT id, price, created_at, movie_id, room, schedule_id
 	FROM "function";
@@ -162,7 +173,8 @@ const (
 	`
 
 	deleteFunction = `
-	DELETE FROM "function"
+	UPDATE "function"
+	SET room = NULL
 	WHERE id = $1;
 	`
 )

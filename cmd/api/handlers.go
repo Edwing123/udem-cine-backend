@@ -44,8 +44,8 @@ func (api *Api) IsLoggedIn(c *fiber.Ctx) error {
 	userId, ok := sess.Get(UserIdKey).(int)
 
 	return SendMessage(c, fiber.StatusOK, fiber.Map{
-		"id": userId,
 		"ok": ok,
+		"id": userId,
 	})
 }
 
@@ -185,7 +185,7 @@ func (api *Api) MoviesDelete(c *fiber.Ctx) error {
 
 	err = api.Models.Movies.Delete(body.Id)
 	if err != nil {
-		api.ServerError(c, err)
+		return api.ServerError(c, err)
 	}
 
 	return SendMessage(c, fiber.StatusOK, "Pelicula eliminada")
@@ -256,7 +256,7 @@ func (api *Api) RoomsDelete(c *fiber.Ctx) error {
 
 	err = api.Models.Rooms.Delete(body.Id)
 	if err != nil {
-		api.ServerError(c, err)
+		return api.ServerError(c, err)
 	}
 
 	return SendMessage(c, fiber.StatusOK, "Sala eliminada")
@@ -327,8 +327,81 @@ func (api *Api) SchedulesDelete(c *fiber.Ctx) error {
 
 	err = api.Models.Schedules.Delete(body.Id)
 	if err != nil {
-		api.ServerError(c, err)
+		return api.ServerError(c, err)
 	}
 
 	return SendMessage(c, fiber.StatusOK, "Horario eliminado")
+}
+
+// Functions related handlers.
+func (api *Api) FunctionsList(c *fiber.Ctx) error {
+	functions, err := api.Models.Functions.List()
+	if err != nil {
+		return api.ServerError(c, err)
+	}
+
+	return SendMessage(c, fiber.StatusOK, functions)
+}
+
+func (api *Api) FunctionsGet(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+	function, err := api.Models.Functions.Get(id)
+	if errors.Is(err, models.ErroNoRows) {
+		return SendError(c, fiber.StatusOK, "Funcion no existe")
+	}
+
+	return SendMessage(c, fiber.StatusOK, function)
+}
+
+func (api *Api) FunctionsCreate(c *fiber.Ctx) error {
+	function, err := ReadJSONBody[models.NewFunction](c)
+	if err != nil {
+		return SendError(c, fiber.StatusBadRequest, err)
+
+	}
+
+	err = api.Models.Functions.Create(function)
+	if err != nil {
+		if errors.Is(err, models.ErrFunctionFuckedUp) {
+			return SendError(c, fiber.StatusOK, "La sala u horario no estan disponibles")
+		}
+
+		return api.ServerError(c, err)
+	}
+
+	return SendMessage(c, fiber.StatusOK, "Funcion creada")
+}
+
+func (api *Api) FunctionsEdit(c *fiber.Ctx) error {
+	function, err := ReadJSONBody[ModelWithId[models.UpdateFunction]](c)
+
+	if err != nil {
+		return SendError(c, fiber.StatusBadRequest, err)
+
+	}
+
+	err = api.Models.Functions.Edit(function.Id, function.Data)
+	if err != nil {
+		if errors.Is(err, models.ErrFunctionFuckedUp) {
+			return SendError(c, fiber.StatusOK, "La sala u horario no estan disponibles")
+		}
+
+		return api.ServerError(c, err)
+	}
+
+	return SendMessage(c, fiber.StatusOK, "Funcion editada")
+}
+
+func (api *Api) FunctionsDelete(c *fiber.Ctx) error {
+	body, err := ReadJSONBody[BodyWithId](c)
+	if err != nil {
+		return SendError(c, fiber.StatusBadRequest, err)
+	}
+
+	err = api.Models.Schedules.Delete(body.Id)
+	if err != nil {
+		return api.ServerError(c, err)
+	}
+
+	return SendMessage(c, fiber.StatusOK, "Funcion eliminada")
 }
