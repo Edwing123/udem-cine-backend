@@ -398,7 +398,7 @@ func (api *Api) FunctionsDelete(c *fiber.Ctx) error {
 		return SendError(c, fiber.StatusBadRequest, err)
 	}
 
-	err = api.Models.Schedules.Delete(body.Id)
+	err = api.Models.Functions.Archive(body.Id)
 	if err != nil {
 		return api.ServerError(c, err)
 	}

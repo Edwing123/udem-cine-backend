@@ -139,7 +139,7 @@ const (
 	selectFunction = `
 	SELECT id, price, created_at, movie_id, room, schedule_id
 	FROM "function"
-	WHERE id = $1; 
+	WHERE id = $1 AND room IS NOT NULL; 
 	`
 
 	selectFunctionDetails = `
@@ -151,11 +151,15 @@ const (
 
 	INNER JOIN "schedule" as s
 	ON f.schedule_id = s.id
+
+	WHERE room IS NOT NULL;
 	`
 
 	selectAllFunctions = `
 	SELECT id, price, created_at, movie_id, room, schedule_id
-	FROM "function";
+	FROM "function"
+	
+	WHERE room IS NOT NULL;
 	`
 
 	insertFunction = `
