@@ -1,56 +1,60 @@
 package postgres
 
 import (
-	"errors"
-
+	"github.com/Edwing123/udem-cine/pkg/codes"
 	"github.com/Edwing123/udem-cine/pkg/hashing"
 	"github.com/Edwing123/udem-cine/pkg/models"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UsersController struct {
 	conn *pgxpool.Pool
 }
 
-func (c *UsersController) Get(id int) (models.User, error) {
+func (c *UsersController) Scan(row pgx.CollectableRow) (models.User, error) {
 	var user models.User
+	err := row.Scan(&user.Id, &user.Name, &user.Role, &user.Password)
+	return user, err
+}
 
-	result := c.conn.QueryRow(globalCtx, selectUser, id)
-	err := result.Scan(&user.Id, &user.Name, &user.Role, &user.Password)
+func (c *UsersController) CheckExecError(err error) error {
+	if err != nil {
+		if isUniqueViolation(err) {
+			return codes.UserNameExists
+		}
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		return user, models.ErroNoRows
+		return serverError(err)
+	}
+
+	return nil
+}
+
+func (c *UsersController) Get(id int) (models.User, error) {
+	result, err := c.conn.Query(globalCtx, selectUser, id)
+	if err != nil {
+		return models.User{}, serverError(err)
+	}
+
+	user, err := pgx.CollectOneRow(result, c.Scan)
+	if isPgxNoRows(err) {
+		return user, codes.NoRecords
 	}
 
 	return user, nil
 }
 
 func (c *UsersController) List() ([]models.User, error) {
-	users := make([]models.User, 0)
-
-	result, err := c.conn.Query(globalCtx, selectAllUsers)
-	if err != nil {
-		return nil, serverError(err)
-	}
-
-	for result.Next() {
-		var user models.User
-
-		err := result.Scan(&user.Id, &user.Name, &user.Role, nil)
-		if err != nil {
-			return nil, serverError(err)
-		}
-
-		users = append(users, user)
-	}
-
-	if err := result.Err(); err != nil {
-		return nil, serverError(err)
-	}
-
-	return users, nil
+	return queryRows(
+		c.conn,
+		selectAllUsers,
+		func(row pgx.CollectableRow) (models.User, error) {
+			user, err := c.Scan(row)
+			// Don't include password.
+			user.Password = ""
+			return user, err
+		},
+	)
 }
 
 func (c *UsersController) Create(user models.NewUser) error {
@@ -62,16 +66,7 @@ func (c *UsersController) Create(user models.NewUser) error {
 		hashing.HashPassword(user.Password),
 	)
 
-	if err != nil {
-		// Is name already taken?
-		if getPgxErroCode(err) == pgerrcode.UniqueViolation {
-			return models.ErrUserNameTaken
-		}
-
-		return serverError(err)
-	}
-
-	return nil
+	return c.CheckExecError(err)
 }
 
 func (c *UsersController) Edit(id int, user models.UpdateUser) error {
@@ -82,16 +77,8 @@ func (c *UsersController) Edit(id int, user models.UpdateUser) error {
 		user.Name,
 		user.Role,
 	)
-	if err != nil {
-		// Is name already taken?
-		if getPgxErroCode(err) == pgerrcode.UniqueViolation {
-			return models.ErrUserNameTaken
-		}
 
-		return serverError(err)
-	}
-
-	return nil
+	return c.CheckExecError(err)
 }
 
 func (c *UsersController) Delete(id int) error {

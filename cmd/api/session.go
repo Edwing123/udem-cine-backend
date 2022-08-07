@@ -14,8 +14,8 @@ func NewStore(config postgres.Config) *session.Store {
 	store := session.New(session.Config{
 		Storage:        storage,
 		Expiration:     time.Hour * 1,
-		CookieSecure:   true,
 		CookieHTTPOnly: true,
+		CookieSecure:   true,
 		CookieSameSite: "none",
 	})
 

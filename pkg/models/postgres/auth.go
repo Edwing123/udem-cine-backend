@@ -1,34 +1,46 @@
 package postgres
 
 import (
-	"errors"
-
+	"github.com/Edwing123/udem-cine/pkg/codes"
 	"github.com/Edwing123/udem-cine/pkg/hashing"
 	"github.com/Edwing123/udem-cine/pkg/models"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type AuthController struct {
 	conn *pgxpool.Pool
 }
 
+type idAnsPassword struct {
+	Id       int
+	Password string
+}
+
+func (c *AuthController) ScanIdAndPassword(row pgx.CollectableRow) (idAnsPassword, error) {
+	var v idAnsPassword
+	err := row.Scan(&v.Id, &v.Password)
+	return v, err
+}
+
+// Authenticates user by checking its credentials from
+// the ones of the database.
 func (c *AuthController) Authenticate(credentials models.Credentials) (int, error) {
-	var hashedPassword string
-	var id int
-
-	row := c.conn.QueryRow(globalCtx, selectUserIdPassword, credentials.UserName)
-
-	err := row.Scan(&id, &hashedPassword)
-
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, models.ErrAuth
+	result, err := c.conn.Query(globalCtx, selectUserIdPassword, credentials.UserName)
+	if err != nil {
+		return 0, serverError(err)
 	}
 
-	isValidPassword := hashing.VerifyPassword(credentials.Password, hashedPassword)
+	record, err := pgx.CollectOneRow(result, c.ScanIdAndPassword)
+
+	if isPgxNoRows(err) {
+		return 0, codes.AuthFailed
+	}
+
+	isValidPassword := hashing.VerifyPassword(credentials.Password, record.Password)
 	if !isValidPassword {
-		return 0, models.ErrAuth
+		return 0, codes.AuthFailed
 	}
 
-	return id, nil
+	return record.Id, nil
 }

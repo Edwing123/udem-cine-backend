@@ -1,17 +1,26 @@
 package postgres
 
 import (
-	"errors"
-	"fmt"
-
+	"github.com/Edwing123/udem-cine/pkg/codes"
 	"github.com/Edwing123/udem-cine/pkg/models"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type FunctionsController struct {
 	conn *pgxpool.Pool
+}
+
+func (c *FunctionsController) CheckExecError(err error) error {
+	if err != nil {
+		if isUniqueViolation(err) {
+			return codes.FunctionRoomScheduleConflict
+		}
+
+		return serverError(err)
+	}
+
+	return nil
 }
 
 func (c *FunctionsController) Get(id int) (models.Function, error) {
@@ -27,29 +36,18 @@ func (c *FunctionsController) Get(id int) (models.Function, error) {
 		&function.ScheduleId,
 	)
 
-	fmt.Println(result, err)
-	fmt.Println(function)
-
-	if errors.Is(err, pgx.ErrNoRows) {
-		return function, models.ErroNoRows
+	if isPgxNoRows(err) {
+		return function, codes.NoRecords
 	}
 
 	return function, nil
 }
 
 func (c *FunctionsController) List() ([]models.FunctionDetails, error) {
-	functions := make([]models.FunctionDetails, 0)
-
-	result, err := c.conn.Query(globalCtx, selectFunctionDetails)
-
-	if err != nil {
-		return nil, serverError(err)
-	}
-
-	for result.Next() {
+	return queryRows(c.conn, selectFunctionDetails, func(row pgx.CollectableRow) (models.FunctionDetails, error) {
 		var function models.FunctionDetails
 
-		err := result.Scan(
+		err := row.Scan(
 			&function.Id,
 			&function.Price,
 			&function.CreatedAt,
@@ -58,20 +56,8 @@ func (c *FunctionsController) List() ([]models.FunctionDetails, error) {
 			&function.Schedule,
 		)
 
-		fmt.Println(err)
-
-		if err != nil {
-			return nil, serverError(err)
-		}
-
-		functions = append(functions, function)
-	}
-
-	if err := result.Err(); err != nil {
-		return nil, serverError(err)
-	}
-
-	return functions, nil
+		return function, err
+	})
 }
 
 func (c *FunctionsController) Create(function models.NewFunction) error {
@@ -84,16 +70,7 @@ func (c *FunctionsController) Create(function models.NewFunction) error {
 		function.ScheduleId,
 	)
 
-	if err != nil {
-		// Check for unique contraints violation...
-		if getPgxErroCode(err) == pgerrcode.UniqueViolation {
-			return models.ErrFunctionFuckedUp
-		}
-
-		return serverError(err)
-	}
-
-	return nil
+	return c.CheckExecError(err)
 }
 
 func (c *FunctionsController) Edit(id int, function models.UpdateFunction) error {
@@ -107,16 +84,7 @@ func (c *FunctionsController) Edit(id int, function models.UpdateFunction) error
 		function.ScheduleId,
 	)
 
-	if err != nil {
-		// Check for unique contraints violation...
-		if getPgxErroCode(err) == pgerrcode.UniqueViolation {
-			return models.ErrFunctionFuckedUp
-		}
-
-		return serverError(err)
-	}
-
-	return nil
+	return c.CheckExecError(err)
 }
 
 func (c *FunctionsController) Archive(id int) error {

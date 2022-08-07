@@ -1,73 +1,57 @@
 package postgres
 
 import (
-	"errors"
-	"time"
-
+	"github.com/Edwing123/udem-cine/pkg/codes"
 	"github.com/Edwing123/udem-cine/pkg/models"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type SchedulesController struct {
 	conn *pgxpool.Pool
 }
 
-func (c *SchedulesController) Get(id int) (models.Schedule, error) {
+func (c *SchedulesController) Scan(row pgx.CollectableRow) (models.Schedule, error) {
 	var schedule models.Schedule
 
-	var parsedTime time.Time
-
-	result := c.conn.QueryRow(globalCtx, selectSchedule, id)
-	err := result.Scan(
+	err := row.Scan(
 		&schedule.Id,
 		&schedule.Name,
-		&parsedTime,
+		&schedule.Time,
 	)
 
-	schedule.Time = parsedTime.Format("15:04")
+	return schedule, err
+}
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		return schedule, models.ErroNoRows
+func (c *SchedulesController) CheckExecError(err error) error {
+	if err != nil {
+		if isUniqueViolation(err) {
+			return codes.ScheduleExists
+		}
+
+		return serverError(err)
+	}
+
+	return nil
+}
+
+func (c *SchedulesController) Get(id int) (models.Schedule, error) {
+	result, err := c.conn.Query(globalCtx, selectSchedule, id)
+	if err != nil {
+		return models.Schedule{}, serverError(err)
+	}
+
+	schedule, err := pgx.CollectOneRow(result, c.Scan)
+
+	if isPgxNoRows(err) {
+		return schedule, codes.NoRecords
 	}
 
 	return schedule, nil
 }
 
 func (c *SchedulesController) List() ([]models.Schedule, error) {
-	schedules := make([]models.Schedule, 0)
-
-	result, err := c.conn.Query(globalCtx, selectAllSchedules)
-	if err != nil {
-		return nil, serverError(err)
-	}
-
-	var parsedTime time.Time
-
-	for result.Next() {
-		var schedule models.Schedule
-
-		err := result.Scan(
-			&schedule.Id,
-			&schedule.Name,
-			&parsedTime,
-		)
-
-		schedule.Time = parsedTime.Format("15:04")
-
-		if err != nil {
-			return nil, serverError(err)
-		}
-
-		schedules = append(schedules, schedule)
-	}
-
-	if err := result.Err(); err != nil {
-		return nil, serverError(err)
-	}
-
-	return schedules, nil
+	return queryRows(c.conn, selectAllSchedules, c.Scan)
 }
 
 func (c *SchedulesController) Create(schedule models.NewSchedule) error {
@@ -78,16 +62,7 @@ func (c *SchedulesController) Create(schedule models.NewSchedule) error {
 		&schedule.Time,
 	)
 
-	if err != nil {
-		// Is schedule time already taken?
-		if getPgxErroCode(err) == pgerrcode.UniqueViolation {
-			return models.ErrScheduleTaken
-		}
-
-		return serverError(err)
-	}
-
-	return nil
+	return c.CheckExecError(err)
 }
 
 func (c *SchedulesController) Edit(id int, schedule models.UpdateSchedule) error {
@@ -99,16 +74,7 @@ func (c *SchedulesController) Edit(id int, schedule models.UpdateSchedule) error
 		&schedule.Time,
 	)
 
-	if err != nil {
-		// Is schedule time already taken?
-		if getPgxErroCode(err) == pgerrcode.UniqueViolation {
-			return models.ErrScheduleTaken
-		}
-
-		return serverError(err)
-	}
-
-	return nil
+	return c.CheckExecError(err)
 }
 
 func (c *SchedulesController) Delete(id int) error {
@@ -119,6 +85,10 @@ func (c *SchedulesController) Delete(id int) error {
 	)
 
 	if err != nil {
+		if isFKVilation(err) {
+			return codes.FunctionDependsOnSchedule
+		}
+
 		return serverError(err)
 	}
 

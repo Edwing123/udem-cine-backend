@@ -64,9 +64,9 @@ type Seat struct {
 
 // Schedule related structs.
 type Schedule struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
-	Time string `json:"time"`
+	Id   int       `json:"id"`
+	Name string    `json:"name"`
+	Time time.Time `json:"time"`
 }
 
 type NewSchedule struct {
@@ -79,7 +79,7 @@ type UpdateSchedule NewSchedule
 // Functions related structs.
 type Function struct {
 	Id         int       `json:"id"`
-	Price      int       `json:"price"`
+	Price      float64   `json:"price"`
 	CreatedAt  time.Time `json:"createdAt"`
 	MovieId    int       `json:"movieId"`
 	Room       int       `json:"room"`
@@ -87,7 +87,7 @@ type Function struct {
 }
 
 type FunctionDetails struct {
-	Id        int       `json:"id"`
+	Id        float64   `json:"id"`
 	Movie     string    `json:"movie"`
 	Schedule  string    `json:"schedule"`
 	Room      int       `json:"room"`
@@ -102,9 +102,4 @@ type NewFunction struct {
 	Price      int
 }
 
-type UpdateFunction struct {
-	MovieId    int
-	ScheduleId int
-	Room       int
-	Price      int
-}
+type UpdateFunction NewFunction

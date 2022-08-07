@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 
+	"github.com/Edwing123/udem-cine/pkg/codes"
 	"github.com/Edwing123/udem-cine/pkg/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -33,14 +34,14 @@ func (api *Api) NewApp() *fiber.App {
 
 	// Define global middlewares.
 	app.Use(
-		api.SetSessionToContext,
 		recover.New(),
 		logger.New(),
+		api.SetSessionToContext,
 	)
 
 	app.Use(cors.New(cors.Config{
 		AllowCredentials: true,
-		AllowOrigins:     "http://localhost:4173, http://localhost:5173",
+		AllowOrigins:     "*",
 	}))
 
 	// No protected routes.
@@ -48,7 +49,7 @@ func (api *Api) NewApp() *fiber.App {
 	app.Get("/is-logged-in", api.IsLoggedIn)
 
 	// Protected routes.
-	app.Use(api.AuthenticateRequest)
+	app.Use(api.OnlyAuthenticated)
 	app.Post("/auth/logout", api.AuthLogout)
 
 	users := app.Group("/users")
@@ -56,61 +57,51 @@ func (api *Api) NewApp() *fiber.App {
 	users.Use(api.OnlyAdmin)
 	users.Get("/list", api.UsersList)
 	users.Post("/create", api.UsersCreate)
-	users.Patch("/edit", api.UsersEdit)
-	users.Delete("/delete", api.UsersDelete)
+	users.Patch("/edit/:id", api.UsersEdit)
+	users.Delete("/delete/:id", api.UsersDelete)
 
 	movies := app.Group("/movies", api.OnlyAdmin)
 	movies.Get("/get/:id", api.MoviesGet)
 	movies.Get("/list", api.MoviesList)
 	movies.Post("/create", api.MoviesCreate)
-	movies.Patch("/edit", api.MoviesEdit)
-	movies.Delete("/delete", api.MoviesDelete)
+	movies.Patch("/edit/:id", api.MoviesEdit)
+	movies.Delete("/delete/:id", api.MoviesDelete)
 
 	rooms := app.Group("/rooms", api.OnlyAdmin)
 	rooms.Get("/get/:number", api.RoomsGet)
 	rooms.Get("/list", api.RoomsList)
 	rooms.Post("/create", api.RoomsCreate)
-	rooms.Patch("/edit", api.RoomsEdit)
-	rooms.Delete("/delete", api.RoomsDelete)
+	rooms.Patch("/edit/:number", api.RoomsEdit)
+	rooms.Delete("/delete/:number", api.RoomsDelete)
 
 	schedules := app.Group("/schedules", api.OnlyAdmin)
 	schedules.Get("/get/:id", api.SchedulesGet)
 	schedules.Get("/list", api.SchedulesList)
 	schedules.Post("/create", api.SchedulesCreate)
-	schedules.Patch("/edit", api.SchedulesEdit)
-	schedules.Delete("/delete", api.SchedulesDelete)
+	schedules.Patch("/edit/:id", api.SchedulesEdit)
+	schedules.Delete("/delete/:id", api.SchedulesDelete)
 
 	functions := app.Group("/functions")
-
 	functions.Get("/list", api.FunctionsList)
 	functions.Use(api.OnlyAdmin)
 	functions.Get("/get/:id", api.FunctionsGet)
 	functions.Post("/create", api.FunctionsCreate)
-	functions.Patch("/edit", api.FunctionsEdit)
-	functions.Delete("/delete", api.FunctionsDelete)
+	functions.Patch("/edit/:id", api.FunctionsEdit)
+	functions.Delete("/delete/:id", api.FunctionsDelete)
 
 	return app
 }
 
 // Response structs.
 type ErrorMessage[T any] struct {
-	Ok     bool `json:"ok"`
-	Reason T    `json:"reason"`
+	Ok      bool       `json:"ok"`
+	Code    codes.Code `json:"code"`
+	Details T          `json:"details,omitempty"`
 }
 
 type SuccessMessage[T any] struct {
 	Ok   bool `json:"ok"`
 	Data T    `json:"data"`
-}
-
-// Request bodies.
-type ModelWithId[T any] struct {
-	Id   int `json:"id"`
-	Data T   `json:"data"`
-}
-
-type BodyWithId struct {
-	Id int `json:"id"`
 }
 
 // Command line arguments.
@@ -120,12 +111,18 @@ type Args struct {
 	StoreUserName string
 	StorePassword string
 	StoreDatabase string
+	CertKeyPath   string
+	CertPath      string
 }
 
 func GetArgs() Args {
 	dsn := flag.String("dsn", "", "Database connection string")
 
 	address := flag.String("address", "", "The server address to listen on")
+
+	certPath := flag.String("certPath", "", "Path of the TLS cert")
+
+	certKeyPath := flag.String("certKeyPath", "", "Path of the TLS cert key")
 
 	storeUserName := flag.String(
 		"storeUserName",
@@ -147,6 +144,14 @@ func GetArgs() Args {
 		log.Fatalln("address flag is required")
 	}
 
+	if *certPath == "" {
+		log.Fatalln("certPath flag is required")
+	}
+
+	if *certKeyPath == "" {
+		log.Fatalln("certKeyPath flag is required")
+	}
+
 	if *storeUserName == "" {
 		log.Fatalln("storeUserName flag is required")
 	}
@@ -165,5 +170,7 @@ func GetArgs() Args {
 		StoreUserName: *storeUserName,
 		StorePassword: *storePassword,
 		StoreDatabase: *storeDatabase,
+		CertPath:      *certPath,
+		CertKeyPath:   *certKeyPath,
 	}
 }

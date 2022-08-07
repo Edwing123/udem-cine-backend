@@ -1,6 +1,8 @@
 package main
 
-import "github.com/gofiber/storage/postgres"
+import (
+	"github.com/gofiber/storage/postgres"
+)
 
 func main() {
 	args := GetArgs()
@@ -23,5 +25,6 @@ func main() {
 
 	app := api.NewApp()
 
-	errorLogger.Fatalln(app.Listen(args.Address))
+	errorLogger.Fatalln(app.ListenTLS(args.Address, args.CertPath, args.CertKeyPath))
+	// errorLogger.Fatalln(app.Listen(args.Address))
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Edwing123/udem-cine/pkg/codes"
 	"github.com/Edwing123/udem-cine/pkg/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
@@ -13,19 +14,25 @@ import (
 func (api *Api) AuthLogin(c *fiber.Ctx) error {
 	credentials, err := ReadJSONBody[models.Credentials](c)
 	if err != nil {
-		return err
+		return SendErrorMessage(c, fiber.StatusBadRequest, codes.Client, err)
 	}
 
 	id, err := api.Models.Authenticate(credentials)
 	if err != nil {
-		return c.SendStatus(fiber.StatusUnauthorized)
+		if errors.Is(err, codes.AuthFailed) {
+			return SendErrorMessage(c, fiber.StatusUnauthorized, codes.AuthFailed, "")
+		}
+
+		return api.ServerError(c, err)
 	}
 
 	sess := c.Locals(SessionKey).(*session.Session)
 	sess.Set(UserIdKey, id)
 	sess.Set(IsLoggedInKey, true)
 
-	return SendMessage(c, fiber.StatusOK, id)
+	return SendSucessMessage(c, fiber.StatusOK, fiber.Map{
+		"id": id,
+	})
 }
 
 func (api *Api) AuthLogout(c *fiber.Ctx) error {
@@ -33,18 +40,21 @@ func (api *Api) AuthLogout(c *fiber.Ctx) error {
 
 	err := sess.Destroy()
 	if err != nil {
-		return c.SendStatus(fiber.StatusInternalServerError)
+		return api.ServerError(c, err)
 	}
 
-	return c.SendStatus(fiber.StatusOK)
+	return SendSucessMessage(c, fiber.StatusOK, "Logout sucessfully")
 }
 
 func (api *Api) IsLoggedIn(c *fiber.Ctx) error {
 	sess := c.Locals(SessionKey).(*session.Session)
 	userId, ok := sess.Get(UserIdKey).(int)
 
-	return SendMessage(c, fiber.StatusOK, fiber.Map{
-		"ok": ok,
+	if !ok {
+		return SendErrorMessage(c, fiber.StatusOK, codes.NotLoggedIn, "")
+	}
+
+	return SendSucessMessage(c, fiber.StatusOK, fiber.Map{
 		"id": userId,
 	})
 }
@@ -52,12 +62,17 @@ func (api *Api) IsLoggedIn(c *fiber.Ctx) error {
 // Users related handlers.
 func (api *Api) UsersGet(c *fiber.Ctx) error {
 	id, _ := c.ParamsInt("id")
+
 	user, err := api.Models.Users.Get(id)
-	if errors.Is(err, models.ErroNoRows) {
-		return SendError(c, fiber.StatusOK, "Usuario no existe")
+	if err != nil {
+		if errors.Is(err, codes.NoRecords) {
+			return SendErrorMessage(c, fiber.StatusNotFound, codes.NoRecords, "")
+		}
+
+		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, user)
+	return SendSucessMessage(c, fiber.StatusOK, user)
 }
 
 func (api *Api) UsersList(c *fiber.Ctx) error {
@@ -66,129 +81,158 @@ func (api *Api) UsersList(c *fiber.Ctx) error {
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, users)
+	return SendSucessMessage(c, fiber.StatusOK, users)
 }
 
 func (api *Api) UsersCreate(c *fiber.Ctx) error {
 	user, err := ReadJSONBody[models.NewUser](c)
 	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
+		return SendErrorMessage(c, fiber.StatusBadRequest, codes.Client, err)
 
 	}
 
 	err = api.Models.Users.Create(user)
 	if err != nil {
-		if errors.Is(err, models.ErrUserNameTaken) {
-			return SendError(c, fiber.StatusOK, fmt.Sprintf("Usuario %s ya existe", user.Name))
+		if errors.Is(err, codes.UserNameExists) {
+			return SendErrorMessage(
+				c,
+				fiber.StatusConflict,
+				codes.UserNameExists,
+				fmt.Sprintf("User %s already exists", user.Name),
+			)
 		}
 
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Usuario creado")
+	return SendSucessMessage(c, fiber.StatusCreated, "User created")
 }
 
 func (api *Api) UsersEdit(c *fiber.Ctx) error {
-	user, err := ReadJSONBody[ModelWithId[models.UpdateUser]](c)
+	id, _ := c.ParamsInt("id")
+
+	user, err := ReadJSONBody[models.UpdateUser](c)
 	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
+		return SendErrorMessage(c, fiber.StatusBadRequest, codes.Client, err)
 	}
 
-	err = api.Models.Users.Edit(user.Id, user.Data)
+	err = api.Models.Users.Edit(id, user)
 	if err != nil {
-		if errors.Is(err, models.ErrUserNameTaken) {
-			return SendError(c, fiber.StatusOK, fmt.Sprintf("Usuario %s ya existe", user.Data.Name))
+		if errors.Is(err, codes.UserNameExists) {
+			return SendErrorMessage(
+				c,
+				fiber.StatusConflict,
+				codes.UserNameExists,
+				fmt.Sprintf("User %s already exists", user.Name),
+			)
 		}
 
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Usuario editado")
+	return SendSucessMessage(c, fiber.StatusOK, "User edited")
 }
 
 func (api *Api) UsersDelete(c *fiber.Ctx) error {
-	body, err := ReadJSONBody[BodyWithId](c)
-	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
-	}
+	id, _ := c.ParamsInt("id")
 
-	err = api.Models.Users.Delete(body.Id)
+	err := api.Models.Users.Delete(id)
 	if err != nil {
 		api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Usuario eliminado")
+	return SendSucessMessage(c, fiber.StatusOK, "User deleted")
 }
 
 // Movies related handlers.
 func (api *Api) MoviesList(c *fiber.Ctx) error {
 	movies, err := api.Models.Movies.List()
+	fmt.Println(err)
 	if err != nil {
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, movies)
+	return SendSucessMessage(c, fiber.StatusOK, movies)
 }
 
 func (api *Api) MoviesGet(c *fiber.Ctx) error {
 	id, _ := c.ParamsInt("id")
+
 	movie, err := api.Models.Movies.Get(id)
-	if errors.Is(err, models.ErroNoRows) {
-		return SendError(c, fiber.StatusOK, "Pelicula no existe")
+	if errors.Is(err, codes.NoRecords) {
+		return SendErrorMessage(
+			c,
+			fiber.StatusNotFound,
+			codes.NoRecords,
+			"",
+		)
 	}
 
-	return SendMessage(c, fiber.StatusOK, movie)
+	return SendSucessMessage(c, fiber.StatusOK, movie)
 }
 
 func (api *Api) MoviesCreate(c *fiber.Ctx) error {
 	movie, err := ReadJSONBody[models.NewMovie](c)
 	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
+		return SendErrorMessage(c, fiber.StatusBadRequest, codes.Client, err)
 
 	}
 
 	err = api.Models.Movies.Create(movie)
 	if err != nil {
-		if errors.Is(err, models.ErrMovieTitleTaken) {
-			return SendError(c, fiber.StatusOK, fmt.Sprintf("Pelicula %s ya existe", movie.Title))
+		if errors.Is(err, codes.MovieTitleExists) {
+			return SendErrorMessage(
+				c,
+				fiber.StatusConflict,
+				codes.MovieTitleExists,
+				fmt.Sprintf("Movie %s already exists", movie.Title),
+			)
 		}
 
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Pelicula creada")
+	return SendSucessMessage(c, fiber.StatusCreated, "Movie created")
 }
 
 func (api *Api) MoviesEdit(c *fiber.Ctx) error {
-	movie, err := ReadJSONBody[ModelWithId[models.UpdateMovie]](c)
+	id, _ := c.ParamsInt("id")
+
+	movie, err := ReadJSONBody[models.UpdateMovie](c)
 	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
+		return SendErrorMessage(c, fiber.StatusBadRequest, codes.Client, err)
 	}
 
-	err = api.Models.Movies.Edit(movie.Id, movie.Data)
+	err = api.Models.Movies.Edit(id, movie)
 	if err != nil {
-		if errors.Is(err, models.ErrMovieTitleTaken) {
-			return SendError(c, fiber.StatusOK, fmt.Sprintf("Pelicula %s ya existe", movie.Data.Title))
+		if errors.Is(err, codes.MovieTitleExists) {
+			return SendErrorMessage(
+				c,
+				fiber.StatusConflict,
+				codes.MovieTitleExists,
+				fmt.Sprintf("Movie %s already exists", movie.Title),
+			)
 		}
 
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Pelicula editada")
+	return SendSucessMessage(c, fiber.StatusOK, "Movie edited")
 }
 
 func (api *Api) MoviesDelete(c *fiber.Ctx) error {
-	body, err := ReadJSONBody[BodyWithId](c)
-	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
-	}
+	id, _ := c.ParamsInt("id")
 
-	err = api.Models.Movies.Delete(body.Id)
+	err := api.Models.Movies.Delete(id)
 	if err != nil {
+		if errors.Is(err, codes.FunctionDependsOnMovie) {
+			return SendErrorMessage(c, fiber.StatusConflict, codes.FunctionDependsOnMovie, "")
+		}
+
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Pelicula eliminada")
+	return SendSucessMessage(c, fiber.StatusOK, "Movie deleted")
 }
 
 // Rooms related handlers.
@@ -198,68 +242,85 @@ func (api *Api) RoomsList(c *fiber.Ctx) error {
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, rooms)
+	return SendSucessMessage(c, fiber.StatusOK, rooms)
 }
 
 func (api *Api) RoomsGet(c *fiber.Ctx) error {
 	id, _ := c.ParamsInt("number")
+
 	room, err := api.Models.Rooms.Get(id)
-	if errors.Is(err, models.ErroNoRows) {
-		return SendError(c, fiber.StatusOK, "Sala no existe")
+	if err != nil {
+		if errors.Is(err, codes.NoRecords) {
+			return SendErrorMessage(c, fiber.StatusNotFound, codes.NoRecords, "")
+
+		}
+
+		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, room)
+	return SendSucessMessage(c, fiber.StatusOK, room)
 }
 
 func (api *Api) RoomsCreate(c *fiber.Ctx) error {
 	room, err := ReadJSONBody[models.NewRoom](c)
 	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
-
+		return SendErrorMessage(c, fiber.StatusBadRequest, codes.Client, err)
 	}
 
 	err = api.Models.Rooms.Create(room)
 	if err != nil {
-		if errors.Is(err, models.ErrRoomTaken) {
-			return SendError(c, fiber.StatusOK, fmt.Sprintf("Sala %d ya existe", room.Number))
+		if errors.Is(err, codes.RoomExists) {
+			return SendErrorMessage(
+				c,
+				fiber.StatusConflict,
+				codes.RoomExists,
+				fmt.Sprintf("Room %d already exists", room.Number),
+			)
 		}
 
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Sala creada")
+	return SendSucessMessage(c, fiber.StatusCreated, "Room created")
 }
 
 func (api *Api) RoomsEdit(c *fiber.Ctx) error {
-	room, err := ReadJSONBody[ModelWithId[models.UpdateRoom]](c)
+	id, _ := c.ParamsInt("number")
+
+	room, err := ReadJSONBody[models.UpdateRoom](c)
 	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
+		return SendErrorMessage(c, fiber.StatusBadRequest, codes.Client, err)
 	}
 
-	err = api.Models.Rooms.Edit(room.Id, room.Data)
+	err = api.Models.Rooms.Edit(id, room)
 	if err != nil {
-		if errors.Is(err, models.ErrRoomTaken) {
-			return SendError(c, fiber.StatusOK, fmt.Sprintf("Sala %d ya existe", room.Data.Number))
+		if errors.Is(err, codes.RoomExists) {
+			return SendErrorMessage(
+				c,
+				fiber.StatusConflict,
+				codes.RoomExists,
+				fmt.Sprintf("Room %d already exists", room.Number),
+			)
 		}
 
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Sala editada")
+	return SendSucessMessage(c, fiber.StatusOK, "Room edited")
 }
 
 func (api *Api) RoomsDelete(c *fiber.Ctx) error {
-	body, err := ReadJSONBody[BodyWithId](c)
-	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
-	}
+	id, _ := c.ParamsInt("number")
 
-	err = api.Models.Rooms.Delete(body.Id)
+	err := api.Models.Rooms.Delete(id)
 	if err != nil {
+		if errors.Is(err, codes.FunctionDependsOnRoom) {
+			return SendErrorMessage(c, fiber.StatusConflict, codes.FunctionDependsOnRoom, "")
+		}
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Sala eliminada")
+	return SendSucessMessage(c, fiber.StatusOK, "Room deleted")
 }
 
 // Schedules related handlers.
@@ -269,68 +330,82 @@ func (api *Api) SchedulesList(c *fiber.Ctx) error {
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, schedules)
+	return SendSucessMessage(c, fiber.StatusOK, schedules)
 }
 
 func (api *Api) SchedulesGet(c *fiber.Ctx) error {
 	id, _ := c.ParamsInt("id")
+
 	schedule, err := api.Models.Schedules.Get(id)
-	if errors.Is(err, models.ErroNoRows) {
-		return SendError(c, fiber.StatusOK, "Horario no existe")
+	if errors.Is(err, codes.NoRecords) {
+		return SendErrorMessage(c, fiber.StatusNotFound, codes.NoRecords, "")
 	}
 
-	return SendMessage(c, fiber.StatusOK, schedule)
+	return SendSucessMessage(c, fiber.StatusOK, schedule)
 }
 
 func (api *Api) SchedulesCreate(c *fiber.Ctx) error {
 	schedule, err := ReadJSONBody[models.NewSchedule](c)
 	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
+		return SendErrorMessage(c, fiber.StatusBadRequest, codes.Client, err)
 
 	}
 
 	err = api.Models.Schedules.Create(schedule)
 	if err != nil {
-		if errors.Is(err, models.ErrScheduleTaken) {
-			return SendError(c, fiber.StatusOK, fmt.Sprintf("Horario %v ya existe", schedule.Time))
+		if errors.Is(err, codes.ScheduleExists) {
+			return SendErrorMessage(
+				c,
+				fiber.StatusConflict,
+				codes.ScheduleExists,
+				fmt.Sprintf("Schedule %s already exists", schedule.Time),
+			)
 		}
 
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Horari creado")
+	return SendSucessMessage(c, fiber.StatusCreated, "Schedule created")
 }
 
 func (api *Api) SchedulesEdit(c *fiber.Ctx) error {
-	schedule, err := ReadJSONBody[ModelWithId[models.UpdateSchedule]](c)
+	id, _ := c.ParamsInt("id")
+
+	schedule, err := ReadJSONBody[models.UpdateSchedule](c)
 	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
+		return SendErrorMessage(c, fiber.StatusBadRequest, codes.Client, err)
 	}
 
-	err = api.Models.Schedules.Edit(schedule.Id, schedule.Data)
+	err = api.Models.Schedules.Edit(id, schedule)
 	if err != nil {
-		if errors.Is(err, models.ErrScheduleTaken) {
-			return SendError(c, fiber.StatusOK, fmt.Sprintf("Horario %v ya existe", schedule.Data.Time))
+		if errors.Is(err, codes.ScheduleExists) {
+			return SendErrorMessage(
+				c,
+				fiber.StatusConflict,
+				codes.ScheduleExists,
+				fmt.Sprintf("Schedule %s already exists", schedule.Time),
+			)
 		}
 
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Horario editado")
+	return SendSucessMessage(c, fiber.StatusOK, "Schedule edited")
 }
 
 func (api *Api) SchedulesDelete(c *fiber.Ctx) error {
-	body, err := ReadJSONBody[BodyWithId](c)
-	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
-	}
+	id, _ := c.ParamsInt("id")
 
-	err = api.Models.Schedules.Delete(body.Id)
+	err := api.Models.Schedules.Delete(id)
 	if err != nil {
+		if errors.Is(err, codes.FunctionDependsOnSchedule) {
+			return SendErrorMessage(c, fiber.StatusConflict, codes.FunctionDependsOnSchedule, "")
+		}
+
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Horario eliminado")
+	return SendSucessMessage(c, fiber.StatusOK, "schedule deleted")
 }
 
 // Functions related handlers.
@@ -340,68 +415,80 @@ func (api *Api) FunctionsList(c *fiber.Ctx) error {
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, functions)
+	return SendSucessMessage(c, fiber.StatusOK, functions)
 }
 
 func (api *Api) FunctionsGet(c *fiber.Ctx) error {
 	id, _ := c.ParamsInt("id")
+
 	function, err := api.Models.Functions.Get(id)
-	if errors.Is(err, models.ErroNoRows) {
-		return SendError(c, fiber.StatusOK, "Funcion no existe")
+	if errors.Is(err, codes.NoRecords) {
+		return SendErrorMessage(c, fiber.StatusNotFound, codes.NoRecords, "")
 	}
 
-	return SendMessage(c, fiber.StatusOK, function)
+	return SendSucessMessage(c, fiber.StatusOK, function)
 }
 
 func (api *Api) FunctionsCreate(c *fiber.Ctx) error {
 	function, err := ReadJSONBody[models.NewFunction](c)
 	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
+		return SendErrorMessage(c, fiber.StatusBadRequest, codes.Client, err)
 
 	}
 
 	err = api.Models.Functions.Create(function)
 	if err != nil {
-		if errors.Is(err, models.ErrFunctionFuckedUp) {
-			return SendError(c, fiber.StatusOK, "La sala u horario no estan disponibles")
+		if errors.Is(err, codes.FunctionRoomScheduleConflict) {
+			return SendErrorMessage(
+				c,
+				fiber.StatusConflict,
+				codes.FunctionRoomScheduleConflict,
+				"Function (schedule, room) pair are in conflict with another function",
+			)
 		}
 
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Funcion creada")
+	return SendSucessMessage(c, fiber.StatusCreated, "Function created")
 }
 
 func (api *Api) FunctionsEdit(c *fiber.Ctx) error {
-	function, err := ReadJSONBody[ModelWithId[models.UpdateFunction]](c)
+	id, _ := c.ParamsInt("number")
 
+	function, err := ReadJSONBody[models.UpdateFunction](c)
 	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
-
+		return SendErrorMessage(c, fiber.StatusBadRequest, codes.Client, err)
 	}
 
-	err = api.Models.Functions.Edit(function.Id, function.Data)
+	err = api.Models.Functions.Edit(id, function)
 	if err != nil {
-		if errors.Is(err, models.ErrFunctionFuckedUp) {
-			return SendError(c, fiber.StatusOK, "La sala u horario no estan disponibles")
+		if errors.Is(err, codes.FunctionRoomScheduleConflict) {
+			return SendErrorMessage(
+				c,
+				fiber.StatusConflict,
+				codes.RoomExists,
+				"Function (schedule, room) pair are in conflict with another function",
+			)
 		}
 
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Funcion editada")
+	return SendSucessMessage(c, fiber.StatusOK, "Function edited")
 }
 
 func (api *Api) FunctionsDelete(c *fiber.Ctx) error {
-	body, err := ReadJSONBody[BodyWithId](c)
-	if err != nil {
-		return SendError(c, fiber.StatusBadRequest, err)
-	}
+	id, _ := c.ParamsInt("id")
 
-	err = api.Models.Functions.Archive(body.Id)
+	err := api.Models.Functions.Archive(id)
 	if err != nil {
+		if errors.Is(err, codes.FunctionRoomScheduleConflict) {
+			return SendErrorMessage(c, fiber.StatusConflict, codes.FunctionRoomScheduleConflict, "")
+		}
+
 		return api.ServerError(c, err)
 	}
 
-	return SendMessage(c, fiber.StatusOK, "Funcion eliminada")
+	return SendSucessMessage(c, fiber.StatusOK, "Function deleted")
 }

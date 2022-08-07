@@ -1,81 +1,74 @@
 package postgres
 
 import (
-	"errors"
-	"fmt"
 	"time"
 
+	"github.com/Edwing123/udem-cine/pkg/codes"
 	"github.com/Edwing123/udem-cine/pkg/models"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type MoviesController struct {
 	conn *pgxpool.Pool
 }
 
-func (c *MoviesController) Get(id int) (models.Movie, error) {
+func (c *MoviesController) Scan(row pgx.CollectableRow) (models.Movie, error) {
 	var movie models.Movie
+	var date time.Time
 
-	var releaseDate time.Time
-
-	result := c.conn.QueryRow(globalCtx, selectMovie, id)
-	err := result.Scan(
+	err := row.Scan(
 		&movie.Id,
 		&movie.Title,
 		&movie.Classification,
 		&movie.Genre,
 		&movie.Duration,
-		&releaseDate,
+		&date,
 	)
 
-	movie.ReleaseDate = releaseDate.Format("2006-01-02")
+	movie.ReleaseDate = date.Format("2006-01-02")
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		return movie, models.ErroNoRows
+	return movie, err
+}
+
+func (c *MoviesController) CheckExecError(err error) error {
+	if err != nil {
+		if isUniqueViolation(err) {
+			return codes.MovieTitleExists
+		}
+
+		return serverError(err)
+	}
+
+	return nil
+}
+
+func (c *MoviesController) ParseDate(date string) time.Time {
+	d, _ := time.Parse("2006-01-02", date)
+	return d
+}
+
+func (c *MoviesController) Get(id int) (models.Movie, error) {
+	result, err := c.conn.Query(globalCtx, selectMovie, id)
+	if err != nil {
+		return models.Movie{}, err
+	}
+
+	movie, err := pgx.CollectOneRow(result, c.Scan)
+
+	if isPgxNoRows(err) {
+		return movie, codes.NoRecords
 	}
 
 	return movie, nil
 }
 
 func (c *MoviesController) List() ([]models.Movie, error) {
-	movies := make([]models.Movie, 0)
-
-	result, err := c.conn.Query(globalCtx, selectAllMovies)
-
-	if err != nil {
-		return nil, serverError(err)
-	}
-
-	var releaseDate time.Time
-
-	for result.Next() {
-		var movie models.Movie
-
-		err := result.Scan(
-			&movie.Id,
-			&movie.Title,
-			&movie.Classification,
-			&movie.Genre,
-			&movie.Duration,
-			&releaseDate,
-		)
-
-		movie.ReleaseDate = releaseDate.Format("02 de January del 2006")
-
-		if err != nil {
-			return nil, serverError(err)
-		}
-
-		movies = append(movies, movie)
-	}
-
-	if err := result.Err(); err != nil {
-		return nil, serverError(err)
-	}
-
-	return movies, nil
+	return queryRows(
+		c.conn,
+		selectAllMovies,
+		c.Scan,
+	)
 }
 
 func (c *MoviesController) Create(movie models.NewMovie) error {
@@ -89,16 +82,7 @@ func (c *MoviesController) Create(movie models.NewMovie) error {
 		movie.ReleaseDate,
 	)
 
-	if err != nil {
-		// Is title already taken?
-		if getPgxErroCode(err) == pgerrcode.UniqueViolation {
-			return models.ErrMovieTitleTaken
-		}
-
-		return serverError(err)
-	}
-
-	return nil
+	return c.CheckExecError(err)
 }
 
 func (c *MoviesController) Edit(id int, movie models.UpdateMovie) error {
@@ -113,16 +97,7 @@ func (c *MoviesController) Edit(id int, movie models.UpdateMovie) error {
 		movie.ReleaseDate,
 	)
 
-	if err != nil {
-		// Is title already taken?
-		if getPgxErroCode(err) == pgerrcode.UniqueViolation {
-			return models.ErrMovieTitleTaken
-		}
-
-		return serverError(err)
-	}
-
-	return nil
+	return c.CheckExecError(err)
 }
 
 func (c *MoviesController) Delete(id int) error {
@@ -132,9 +107,11 @@ func (c *MoviesController) Delete(id int) error {
 		id,
 	)
 
-	fmt.Println(err)
-
 	if err != nil {
+		if isFKVilation(err) {
+			return codes.FunctionDependsOnMovie
+		}
+
 		return serverError(err)
 	}
 

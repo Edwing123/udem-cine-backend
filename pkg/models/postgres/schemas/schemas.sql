@@ -35,10 +35,10 @@ CREATE TABLE IF NOT EXISTS "schedule" (
 
 CREATE TABLE IF NOT EXISTS "function" (
     id SERIAL PRIMARY KEY,
-    price INT NOT NULL,
+    price DECIMAL NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     movie_id INT NOT NULL REFERENCES "movie"(id),
     room SMALLINT NULL REFERENCES "room"(number),
-    schedule_id INT NOT NULL REFERENCES "schedule"(id),
+    schedule_id INT NULL REFERENCES "schedule"(id),
     CONSTRAINT function_room_schedule_unique UNIQUE (room, schedule_id)
 );

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Edwing123/udem-cine/pkg/codes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
 )
@@ -28,12 +29,17 @@ func (api *Api) SetSessionToContext(c *fiber.Ctx) error {
 }
 
 // Calls the next handler only if the user is logged in.
-func (api *Api) AuthenticateRequest(c *fiber.Ctx) error {
+func (api *Api) OnlyAuthenticated(c *fiber.Ctx) error {
 	sess := api.GetSession(c)
 	isLoggedIn, ok := sess.Get(IsLoggedInKey).(bool)
 
 	if !isLoggedIn || !ok {
-		return c.SendStatus(fiber.StatusUnauthorized)
+		return SendErrorMessage(
+			c,
+			fiber.StatusUnauthorized,
+			codes.AccessDenied,
+			utils.StatusMessage(fiber.StatusUnauthorized),
+		)
 	}
 
 	return c.Next()
@@ -53,9 +59,10 @@ func (api *Api) OnlyAdmin(c *fiber.Ctx) error {
 		return c.Next()
 	}
 
-	return SendError(
+	return SendErrorMessage(
 		c,
 		fiber.StatusUnauthorized,
+		codes.AdminOnly,
 		utils.StatusMessage(fiber.StatusUnauthorized),
 	)
 }

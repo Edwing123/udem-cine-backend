@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/Edwing123/udem-cine/pkg/models"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func New(dsn string) (models.Models, error) {
 	ctx := context.Background()
 
-	conn, err := pgxpool.Connect(ctx, dsn)
+	conn, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return models.Models{}, err
 	}

@@ -178,7 +178,8 @@ const (
 
 	deleteFunction = `
 	UPDATE "function"
-	SET room = NULL
+	SET room = NULL,
+		schedule_id = NULL
 	WHERE id = $1;
 	`
 )
